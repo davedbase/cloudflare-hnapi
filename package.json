@@ -1,27 +1,46 @@
 {
-  "name": "node-hnapi",
-  "version": "3.2.0",
-  "engines": {
-    "node": ">=10.x"
+  "name": "cloudflare-hnapi",
+  "version": "1.0.0",
+  "main": "dist/worker.js",
+  "description": "Yet another HN proxy utility but for Cloudflare.",
+  "private": true,
+  "contributors": [
+    {
+      "name": "David Di Biase (davedbase)",
+      "url": "https://github.com/davedbase"
+    }
+  ],
+  "scripts": {
+    "dev": "miniflare --live-reload --watch --verbose",
+    "build": "tsc && vpc build -m src/worker.ts dist/worker.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write '**/*.{ts,css,json,md}'",
+    "deploy": "wrangler publish dist/worker.js"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^3.11.0",
+    "@miniflare/kv": "^2.5.0",
+    "@types/cookie": "^0.5.1",
+    "@types/itty-router-extras": "^0.4.0",
+    "@types/jsonwebtoken": "^8.5.8",
+    "@types/uuid": "^8.3.4",
+    "miniflare": "^2.5.0",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.3",
+    "vite": "^2.9.12",
+    "vite-plugin-cloudflare": "^0.1.3"
   },
   "dependencies": {
-    "@firebase/app": "~0.6.13",
-    "@firebase/database": "~0.8.3",
-    "compression": "~1.7.4",
-    "connect-ratelimit": "0.0.7",
-    "cors": "~2.8.5",
-    "domino": "~2.1.6",
-    "dotenv": "~8.2.0",
-    "express": "~4.17.1",
-    "express-user-agent-blocker": "^2.0.4",
-    "extend": "~3.0.2",
-    "he": "~1.2.0",
-    "ioredis": "~4.19.4",
-    "json-stringify-safe": "~5.0.1",
-    "memory-cache": "~0.2.0",
-    "moment": "~2.29.1",
-    "morgan": "~1.10.0",
-    "on-headers": "~1.0.2",
-    "timequeue": "~2.0.2"
+    "cheerio": "^1.0.0-rc.12",
+    "firebase": "^9.11.0",
+    "he": "^1.2.0",
+    "itty-router": "^2.6.1",
+    "itty-router-extras": "^0.4.2",
+    "javascript-time-ago": "^2.5.7",
+    "timequeue": "^4.0.0",
+    "url": "^0.11.0",
+    "uuid": "^8.3.2",
+    "wrangler": "^2.1.10",
+    "zod": "^3.17.3"
   }
 }
