@@ -3,14 +3,10 @@ import TimeAgo from "javascript-time-ago";
 import { load } from "cheerio";
 import fetchQueue from "./queue";
 import en from "javascript-time-ago/locale/en";
-import { cleanText } from "../src/util";
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, child, get } from "firebase/database";
+// import { cleanText } from "../src/util";
 
 const HACKNEWS_API = "https://hacker-news.firebaseio.com/v0";
 const PAGE_LIMIT = 30;
-
-const app = initializeApp({ databaseURL: "https://hacker-news.firebaseio.com" });
 
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
@@ -141,6 +137,7 @@ export async function getComments(
   return await Promise.all(
     items.map(async (item_id) => {
       try {
+        console.log(item_id);
         const comment: any = await fetchQueue.push(
           `${HACKNEWS_API}/item/${item_id}.json`
         );
@@ -148,18 +145,18 @@ export async function getComments(
         if (comment.deleted) {
           content = "[deleted]";
         } else if (comment.text) {
-          content = cleanText(comment.text);
+          // content = cleanText(comment.text);
         }
         return {
           id: comment.id,
           level: level,
           user: comment.by,
           time: comment.time,
-          time_ago: timeAgo.format(new Date(comment.time * 1000)),
+          // time_ago: timeAgo.format(new Date(comment.time * 1000)),
           content,
           deleted: comment.deleted,
           dead: comment.dead,
-          comments: comment.kids
+          comments: comment.kids && comment.kids.length !== 0
             ? await getComments(comment.kids, level + 1)
             : [],
         } as Comment;
@@ -178,22 +175,14 @@ export async function getComments(
  * @returns {HNItem | boolean} False for failed or the full item record.
  */
 export async function queryFullItem(id: string): Promise<Item> {
-  try {
-    const app = initializeApp({
-      databaseURL: "https://hacker-news.firebaseio.com"
-    });
-    const hn = ref(getDatabase(app), "/v0");
-    const snapshot = await get(child(hn, `item/${id}`));
-    if (snapshot.exists()) {
-      console.log(snapshot.val());
-    } else {
-      console.log("No data available");
-    }
-    return {} as Item;
-  } catch(err) {
-    console.log(err);
+  let item = await getItem(id, true);
+  if (item === false) {
+    throw new Error("Item does not exist");
   }
-  return {} as Item;
+  if (item.comments) {
+    item.comments = await getComments(item.comments as number[], 0);
+  }
+  return item;
 }
 
 /**
