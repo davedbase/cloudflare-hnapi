@@ -4,11 +4,16 @@ import { load } from "cheerio";
 import fetchQueue from "./queue";
 import en from "javascript-time-ago/locale/en";
 import { cleanText } from "../src/util";
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, child, get } from "firebase/database";
+
+const HACKNEWS_API = "https://hacker-news.firebaseio.com/v0";
+const PAGE_LIMIT = 30;
+
+const app = initializeApp({ databaseURL: "https://hacker-news.firebaseio.com" });
 
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
-const HACKNEWS_API = "https://hacker-news.firebaseio.com/v0";
-const PAGE_LIMIT = 30;
 
 type Comment = {
   id: string;
@@ -173,14 +178,22 @@ export async function getComments(
  * @returns {HNItem | boolean} False for failed or the full item record.
  */
 export async function queryFullItem(id: string): Promise<Item> {
-  let item = await getItem(id, true);
-  if (item === false) {
-    throw new Error("Item does not exist");
+  try {
+    const app = initializeApp({
+      databaseURL: "https://hacker-news.firebaseio.com"
+    });
+    const hn = ref(getDatabase(app), "/v0");
+    const snapshot = await get(child(hn, `item/${id}`));
+    if (snapshot.exists()) {
+      console.log(snapshot.val());
+    } else {
+      console.log("No data available");
+    }
+    return {} as Item;
+  } catch(err) {
+    console.log(err);
   }
-  if (item.comments) {
-    item.comments = await getComments(item.comments as number[], 0);
-  }
-  return item;
+  return {} as Item;
 }
 
 /**
