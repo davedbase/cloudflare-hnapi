@@ -24,3 +24,12 @@ export async function item({ params }: Request) {
     return failure(500, err.message);
   }
 }
+
+export async function stories({ query }: Request, type: string) {
+  let page = query && query.page ? Number(query.page) : 1;
+  try {
+    return send(await queryItems(type, page));
+  } catch (err: any) {
+    return failure(500, err.message);
+  }
+}
