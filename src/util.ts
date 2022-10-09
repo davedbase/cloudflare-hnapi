@@ -99,9 +99,9 @@ export const internalError = () =>
  * @return {string} Returns cleansed HTML
  */
 export function cleanText(html: string): string {
-  if (!html) return '';
+  if (!html) return "";
   // yea yea regex to clean HTML is lame yada yada
-  html = html.replace(/<\/p>/ig, ''); // remove trailing </p>s
-  if (!html.match(/^<p>/i)) html = '<p>' + html; // prepend <p>
+  html = html.replace(/<\/p>/gi, ""); // remove trailing </p>s
+  if (!html.match(/^<p>/i)) html = "<p>" + html; // prepend <p>
   return html;
 }
