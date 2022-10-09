@@ -1,7 +1,7 @@
 import { Router, Request } from "itty-router";
 import { failure, handleOptions, send } from "./util";
 import { status, robots, nocontent } from "./routes/general";
-import { item, news } from "./routes/types";
+import { item, news, stories } from "./routes/types";
 
 const router = Router();
 
