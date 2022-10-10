@@ -14,6 +14,10 @@ If you are planning to scrape a _huge_ amount of posts or (historical) data from
 
 ---
 
+## Notes
+
+This refactored version also use modern packages such as Cheerio and Itty Router. It also uses Cloudflare Workers KV for storage and simple TTL expirations. Note that this service makes multiple recursive round-trips to the actual HN Firestore API. Cloudflare has a maximum subrequest limit of 50 for this reason the wrangler automatically enables unbound service on your worker (which might be costly in some cases). Please be ware of this limitaiton before using.
+
 ## Quick Start
 
 1. `git clone` this repo.
