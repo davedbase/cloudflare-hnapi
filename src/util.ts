@@ -86,7 +86,9 @@ declare global {
  */
 export async function setCache(url: string, value: object): Promise<void> {
   const path = new URL(url);
-  await HNAPICACHE.put(path.pathname, JSON.stringify(value), { expirationTtl: 15 * 60 }); // 15 minute in seconds
+  await HNAPICACHE.put(path.pathname, JSON.stringify(value), {
+    expirationTtl: 15 * 60,
+  }); // 15 minute in seconds
 }
 
 /**
@@ -108,7 +110,7 @@ export async function withCache(req: Request) {
   const path = new URL(req.url);
   const value = await getCache(path.pathname);
   if (value != null) {
-    return text(value, { headers: { 'Content-Type': 'application/json' } });
+    return text(value, { headers: { "Content-Type": "application/json" } });
   }
   return undefined;
 }
