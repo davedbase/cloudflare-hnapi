@@ -1,6 +1,6 @@
 # Cloudflare HN API
 
-And yet another unofficial API for [Hacker News](http://news.ycombinator.com/). This was ported from the [original by cheeaun](github.com/cheeaun/node-hnapi). This was mostly copied from the original despite the fact that there is already a CDN proxy.
+And yet another unofficial API for [Hacker News](http://news.ycombinator.com/). This was ported from the [original by cheeaun](https://www.github.com/cheeaun/node-hnapi). This was mostly copied from the original despite the fact that there is already a CDN proxy.
 
 This was ported to modernize the code and make it slightly more readable. It was also rebuilt to work exclusively on Cloudflare Workers. It was also rebuilt to have greater control over the service for the SolidJS project, which uses this API for HackerNews clones (which are used for testing and validation).
 
