@@ -1,7 +1,7 @@
 import { Router, Request } from "itty-router";
-import { failure, handleOptions, send } from "./util";
-import { status, robots, nocontent } from "./routes/general";
-import { item, news, stories } from "./routes/types";
+import { handleOptions, withCache } from "./util";
+import { error, missing } from "itty-router-extras";
+import { comments, item, news, stories, user, status, robots } from "./routes";
 
 const router = Router();
 
@@ -14,27 +14,31 @@ Object.entries({
   show: "showstories",
   jobs: "jobstories",
 }).map(([path, type]) => {
-  router.get(`/${path}`, (req: Request) => news(req, type));
+  router.get(`/${path}`, withCache, (req: Request) => stories(req, type));
 });
 
 // Story routes
 ["shownew", "active", "noobstories"].map((type) => {
-  router.get(`/${type}`, (req: Request) => stories(req, type));
+  router.get(`/${type}`, withCache, (req: Request) => news(req, type));
 });
 
 // Other routes
-router.get("/newcomments", () => send("Item"));
-router.get("/item/:id", item);
+router.get("/newcomments", withCache, comments);
+router.get("/item/:id", withCache, item);
+router.get("/user/:id", withCache, user);
 
 // Misc
 router.get("/", status);
-router.get("/favicon.ico", nocontent);
+router.get("/favicon.ico", missing);
 router.get("/robots.txt", robots);
-router.all("*", () => failure(404, "No content available."));
+router.all("*", () => error(404, "No content available."));
 
 addEventListener("fetch", (event: FetchEvent) => {
+  let response;
   if (event.request.method === "OPTIONS") {
-    return event.respondWith(handleOptions(event.request));
+    response = event.respondWith(handleOptions(event.request));
+  } else {
+    response = event.respondWith(router.handle(event.request));
   }
-  return event.respondWith(router.handle(event.request));
+  return response;
 });

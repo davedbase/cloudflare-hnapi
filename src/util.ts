@@ -1,46 +1,4 @@
-/**
- * Sends a structured success response to the user.
- *
- * @param data {object|string} Data to send back as serialized response
- * @param init {object} Response initialization values
- * @returns Response object to send back
- */
-export function send(data: object | string | null, init?: ResponseInit) {
-  return new Response(data instanceof Object ? JSON.stringify(data) : data, {
-    ...init,
-    headers: {
-      ...cors(),
-      ...init?.headers,
-    },
-  });
-}
-
-/**
- * Sends a failure response to the user.
- *
- * @param code {number} HTTP Status code
- * @param message {string} Message of the error
- * @returns Response object to send back
- */
-export function failure(
-  code: number,
-  message: string | object,
-  status_code: string | undefined = undefined
-) {
-  return new Response(
-    JSON.stringify({
-      status_code,
-      error: message,
-    }),
-    {
-      status: code,
-      statusText: typeof message === "string" ? message : "ERROR",
-      headers: {
-        ...cors(),
-      },
-    }
-  );
-}
+import { text } from "itty-router-extras";
 
 /**
  * Handles preflight OPTION requests.
@@ -87,12 +45,6 @@ export function cors(_request?: Request) {
 }
 
 /**
- * Returns a failure notice as a standard internal error message.
- */
-export const internalError = () =>
-  failure(404, "Internal or unknown error detected", "INTERNAL_ERROR");
-
-/**
  * Cleanses an HTML string.
  *
  * @param {string} Input HTML value
@@ -100,8 +52,63 @@ export const internalError = () =>
  */
 export function cleanText(html: string): string {
   if (!html) return "";
-  // yea yea regex to clean HTML is lame yada yada
   html = html.replace(/<\/p>/gi, ""); // remove trailing </p>s
   if (!html.match(/^<p>/i)) html = "<p>" + html; // prepend <p>
   return html;
+}
+
+/**
+ * Cleanses more complex content string.
+ *
+ * @param {string} Input HTML value
+ * @return {string} Returns cleansed HTML
+ */
+export function cleanContent(html) {
+  html = html.replace(/">-+<\/font/gi, '"></font'); // remove weird invisible dashes at the end of comments
+  html = html.replace(/<\/?font[^<>]*>/gi, ""); // remove font tags
+  html = html.replace(/<\/p>/gi, ""); // remove trailing </p>s
+  if (!html.match(/^<p>/i)) html = "<p>" + html; // prepend <p>
+  return html;
+}
+
+declare global {
+  var HNAPICACHE: {
+    put: (key: string, value: string, meta: { expirationTtl: number }) => void;
+    get: (key: string) => string;
+  };
+}
+
+/**
+ * Helper for setting the cache value.
+ *
+ * @param {string} Key of the cache value to store
+ * @param {string} Value of the cache value to store
+ */
+export async function setCache(url: string, value: object): Promise<void> {
+  const path = new URL(url);
+  await HNAPICACHE.put(path.pathname, JSON.stringify(value), { expirationTtl: 15 * 60 }); // 15 minute in seconds
+}
+
+/**
+ * Retrieves the cache value.
+ *
+ * @param {string} Key value to pull
+ * @return {string} Returns the cached value from the worker
+ */
+async function getCache(key: string): Promise<string | null> {
+  return await HNAPICACHE.get(key);
+}
+/**
+ * Middleware function that checks cache before allowing the route through.
+ *
+ * @param {Request} Request Object from the server
+ * @return Returns either the cached value as JSON or a value to continue the route.
+ */
+export async function withCache(req: Request) {
+  const path = new URL(req.url);
+  const value = await getCache(path.pathname);
+  if (value != null) {
+    return text(value, { headers: { 'Content-Type': 'application/json' } });
+  }
+  return undefined;
 }

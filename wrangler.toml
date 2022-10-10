@@ -2,6 +2,9 @@ name = "hnapi"
 workers_dev = true
 account_id = "fa2a5e3787deead800c822a0e1171763"
 compatibility_date = "2022-04-05"
+kv_namespaces = [
+  { binding = "HNAPICACHE", id="2108185655bf4f5ea1f9fa43ad42ec31" }
+]
 
 [build]
 command = "npm run build"

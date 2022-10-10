@@ -1,9 +1,11 @@
 import { decode } from "he";
-import TimeAgo from "javascript-time-ago";
 import { load } from "cheerio";
-import fetchQueue from "./queue";
+
+import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
-// import { cleanText } from "../src/util";
+
+import fetchQueue from "./queue";
+import { cleanText, cleanContent } from "../src/util";
 
 const HACKNEWS_API = "https://hacker-news.firebaseio.com/v0";
 const PAGE_LIMIT = 30;
@@ -11,6 +13,14 @@ const PAGE_LIMIT = 30;
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
 
+type User = {
+  id: string;
+  created_time: string;
+  created: string;
+  karma: string;
+  avg: null | string;
+  about: string;
+};
 type Comment = {
   id: string;
   level: number;
@@ -54,17 +64,20 @@ export async function queryItems(
     orderBy: '"$key"',
     limitToFirst: (PAGE_LIMIT * page).toString(),
   });
-  const resp = await fetch(`${HACKNEWS_API}/${item_type}.json?${params}`);
-  if (resp.status !== 200) {
-    const result: { error: string } = await resp.json();
-    throw new Error(result.error);
+  try {
+    let ids = (await fetchQueue.push(
+      `${HACKNEWS_API}/${item_type}.json?${params}`,
+      null
+    )) as string[];
+    ids = ids.slice(start, end);
+    const stories: (false | Item)[] = await Promise.all(
+      ids.map(async (id) => getItem(id))
+    );
+    return stories.filter(Boolean) as Item[];
+  } catch (err) {
+    console.log(err);
+    throw new Error("Could not fetch items");
   }
-  let ids: string[] = await resp.json();
-  ids = ids.slice(start, end);
-  const stories: (false | Item)[] = await Promise.all(
-    ids.map(async (id) => getItem(id))
-  );
-  return stories.filter(Boolean) as Item[];
 }
 
 /**
@@ -84,8 +97,10 @@ export async function getItem(
   let retries = 3;
   while (retries > 0) {
     try {
-      const resp = await fetch(`${HACKNEWS_API}/item/${id}.json`);
-      const item: any = await resp.json();
+      const item = (await fetchQueue.push(
+        `${HACKNEWS_API}/item/${id}.json`,
+        null
+      )) as any;
       let output: Item = {
         id: item.id,
         title: item.title ? decode(item.title) : undefined,
@@ -125,6 +140,36 @@ export async function getItem(
 }
 
 /**
+ * Retrieves a user record from the HackerNews Firestore database.
+ *
+ * @param id {string} HackerNews user ID.
+ * @returns {User} Returns a fully populated user record.
+ */
+export async function queryUser(id: string): Promise<User> {
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const user = (await fetchQueue.push(
+        `${HACKNEWS_API}/user/${id}.json`,
+        null
+      )) as any;
+      let output: User = {
+        id: user.id,
+        created_time: user.created,
+        created: timeAgo.format(new Date(user.created * 1000)),
+        karma: user.karma,
+        avg: null, // No average yo
+        about: cleanText(user.about),
+      };
+      return output;
+    } catch (err) {
+      retries--;
+    }
+  }
+  throw new Error("Could not retrieve user");
+}
+
+/**
  * Retrieves a set of recursive comments.
  *
  * @param id {string} HackerNews item ID.
@@ -137,28 +182,29 @@ export async function getComments(
   return await Promise.all(
     items.map(async (item_id) => {
       try {
-        console.log(item_id);
         const comment: any = await fetchQueue.push(
-          `${HACKNEWS_API}/item/${item_id}.json`
+          `${HACKNEWS_API}/item/${item_id}.json`,
+          null
         );
         let content = "";
         if (comment.deleted) {
           content = "[deleted]";
         } else if (comment.text) {
-          // content = cleanText(comment.text);
+          content = cleanText(comment.text);
         }
         return {
           id: comment.id,
           level: level,
           user: comment.by,
           time: comment.time,
-          // time_ago: timeAgo.format(new Date(comment.time * 1000)),
+          time_ago: timeAgo.format(new Date(comment.time * 1000)),
           content,
           deleted: comment.deleted,
           dead: comment.dead,
-          comments: comment.kids && comment.kids.length !== 0
-            ? await getComments(comment.kids, level + 1)
-            : [],
+          comments:
+            comment.kids && comment.kids.length !== 0
+              ? await getComments(comment.kids, level + 1)
+              : [],
         } as Comment;
       } catch (err) {
         console.log(err);
@@ -192,7 +238,7 @@ export async function queryFullItem(id: string): Promise<Item> {
  * @param page {number} Page number to retrieve the object
  * @returns
  */
-export function parseStories(body: string) {
+export function parseNews(body: string) {
   if (!/[<>]/.test(body)) {
     throw new Error("Not HTML content");
   } else {
@@ -205,13 +251,11 @@ export function parseStories(body: string) {
         let row1 = $(rows[i]);
         let row2 = $(rows[i + 1]);
         if (!row2.length) break;
-
         const voteLink = row1.find("td a[id^=up]");
         let id =
           voteLink && voteLink.length
             ? (voteLink.attr("id")?.match(/\d+/) || [])[0]
             : null;
-
         const cell1 = row1.find("td.title").has("a");
         const link = cell1.find("a:first");
         const title = link.text().trim();
@@ -220,7 +264,6 @@ export function parseStories(body: string) {
           .find(".comhead")
           .text()
           .match(/\(\s?([^()]+)\s?\)/i) || [, null])[1];
-
         const cell2 = row2.find("td.subtext");
         const points = parseInt(cell2.find("span[id^=score]").text(), 10);
         const userLink = cell2.find("a[href^=user]");
@@ -233,7 +276,6 @@ export function parseStories(body: string) {
           commentsCountLink && /\d/.test(commentsCountLink.text())
             ? parseInt(commentsCountLink.text(), 10)
             : 0;
-
         let type = "link";
         if (url?.match(/^item/i)) type = "ask";
         if (!user) {
@@ -259,4 +301,83 @@ export function parseStories(body: string) {
       throw e;
     }
   }
+}
+
+/**
+ * Pulls data from specific HackerNews pages and extracts data via the DOM.
+ *
+ * @param item_type {string} Record/item collection to retrieve from the API.
+ * @param page {number} Page number to retrieve the object
+ * @returns
+ */
+export function parseComments(body: string): Comment[] {
+  if (!/[<>]/.test(body)) {
+    new Error("Not HTML content");
+  } else {
+    try {
+      const $ = load(body);
+      const rows = $("tr:nth-child(3) tr:has(.comment)");
+      let comments = [];
+      // Create flat array of comments
+      for (let i = 0, l = rows.length; i < l; i++) {
+        const row = $(rows[i]);
+        let level = 0;
+        const levelRow = row.find('img[src*="s.gif"]');
+        const metadata = row.find(".comhead").has("a");
+        let user = "";
+        let time_ago = "";
+        let id = "";
+        let content = "[deleted]";
+        if (levelRow.length) {
+          level = parseInt(levelRow.attr("width"), 10) / 40;
+        }
+        if (metadata.length) {
+          var userLink = metadata.find("a[href^=user]");
+          user = userLink.text();
+          time_ago = metadata.find(".age").attr("title");
+          if (time_ago) {
+            time_ago = timeAgo.format(new Date(time_ago));
+          }
+          var commentEl = row.find(".comment");
+          var replyLink = commentEl.find("a[href^=reply]");
+
+          // Sometimes the markup becomes nice, and 'reply' link is not part of the comments
+          if (replyLink.length) {
+            // Remove 'reply' link
+            if (replyLink.parent("u").length) {
+              replyLink.parent().remove();
+            } else {
+              replyLink.remove();
+            }
+          }
+          content = cleanContent(commentEl.html());
+        }
+        comments.push({
+          id: id,
+          level: level,
+          user: user,
+          time_ago,
+          content: content,
+          comments: [],
+        });
+      }
+      // Comments are not nested yet, this 2nd loop will nest 'em up
+      for (var i = 0, l = comments.length; i < l; i++) {
+        const comment = comments[i];
+        const level = comment.level;
+        if (level > 0) {
+          let index = i,
+            parentComment;
+          do {
+            parentComment = comments[--index];
+          } while (parentComment.level >= level);
+          parentComment.comments.push(comment);
+        }
+      }
+      return comments.filter((comment) => comment.level == 0);
+    } catch (e) {
+      throw e;
+    }
+  }
+  return [];
 }
