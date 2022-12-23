@@ -332,14 +332,14 @@ export function parseComments(body: string): Comment[] {
           level = parseInt(levelRow.attr("width"), 10) / 40;
         }
         if (metadata.length) {
-          var userLink = metadata.find("a[href^=user]");
+          const userLink = metadata.find("a[href^=user]");
           user = userLink.text();
           time_ago = metadata.find(".age").attr("title");
           if (time_ago) {
             time_ago = timeAgo.format(new Date(time_ago));
           }
-          var commentEl = row.find(".comment");
-          var replyLink = commentEl.find("a[href^=reply]");
+          const commentEl = row.find(".comment");
+          const replyLink = commentEl.find("a[href^=reply]");
 
           // Sometimes the markup becomes nice, and 'reply' link is not part of the comments
           if (replyLink.length) {
@@ -362,7 +362,7 @@ export function parseComments(body: string): Comment[] {
         });
       }
       // Comments are not nested yet, this 2nd loop will nest 'em up
-      for (var i = 0, l = comments.length; i < l; i++) {
+      for (let i = 0, l = comments.length; i < l; i++) {
         const comment = comments[i];
         const level = comment.level;
         if (level > 0) {

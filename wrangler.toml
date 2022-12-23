@@ -6,6 +6,9 @@ compatibility_date = "2022-04-05"
 kv_namespaces = [
   { binding = "HNAPICACHE", id="2108185655bf4f5ea1f9fa43ad42ec31" }
 ]
+services = [
+  { binding = "HNAPI", service = "hnapi", environment = "production" }
+]
 
 [build]
 command = "npm run build"

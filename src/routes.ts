@@ -7,6 +7,7 @@ import {
   queryFullItem,
   queryItems,
   queryUser,
+  getComments,
 } from "./hn";
 import fetchQueue from "./queue";
 
@@ -47,9 +48,9 @@ export async function stories({ query, url }: Request, type: string) {
     page = 2;
   }
   try {
-    const value = await queryItems(type, page);
-    setCache(url, value);
-    return json(value);
+    const items = await queryItems(type, page);
+    setCache(url, items);
+    return json(items);
   } catch (err: any) {
     return error(500, err.message);
   }
@@ -61,9 +62,9 @@ export async function stories({ query, url }: Request, type: string) {
 export async function item({ params, url }: Request) {
   try {
     if (!params || !params.id) throw new Error("Missing identifier");
-    const value = await queryFullItem(params.id);
-    setCache(url, value);
-    return json(value);
+    const item = await queryFullItem(params.id);
+    setCache(url, item);
+    return json(item);
   } catch (err: any) {
     return error(500, err.message);
   }
@@ -72,7 +73,7 @@ export async function item({ params, url }: Request) {
 /**
  * Handles requests for comments
  */
-export async function comments(
+export async function newComments(
   // @ts-ignore
   { headers, url }: Request
 ) {
@@ -84,9 +85,31 @@ export async function comments(
         ip: headers.get("CF-Connecting-IP"),
       }
     )) as string;
-    const value = parseComments(body);
-    setCache(url, value);
-    return json(value);
+    const comments = parseComments(body);
+    setCache(url, comments);
+    return json(comments);
+  } catch (err: any) {
+    return error(500, err.message);
+  }
+}
+
+/**
+ * Handles requests for comments
+ */
+export async function comments(
+  // @ts-ignore
+  { query, url }: Request
+) {
+  try {
+    let ids = [];
+    if (query.ids.includes(",")) {
+      ids = [...query.ids.split(",")];
+    } else {
+      ids.push(query.ids);
+    }
+    const comments = getComments(ids);
+    setCache(url, comments);
+    return json(comments);
   } catch (err: any) {
     return error(500, err.message);
   }
@@ -98,9 +121,9 @@ export async function comments(
 export async function user({ params, url }: Request) {
   try {
     if (!params || !params.id) throw new Error("Missing identifier");
-    const value = await queryUser(params.id);
-    setCache(url, value);
-    return json(value);
+    const user = await queryUser(params.id);
+    setCache(url, user);
+    return json(user);
   } catch (err: any) {
     return error(500, err.message);
   }
@@ -122,9 +145,9 @@ export async function news(
         ip: headers.get("CF-Connecting-IP"),
       }
     )) as string;
-    const value = parseNews(body);
-    setCache(url, value);
-    return json(value);
+    const news = parseNews(body);
+    setCache(url, news);
+    return json(news);
   } catch (err: any) {
     return error(500, err.message);
   }

@@ -1,7 +1,7 @@
 import { Router, Request } from "itty-router";
 import { handleOptions, withCache } from "./util";
 import { error, missing } from "itty-router-extras";
-import { comments, item, news, stories, user, status, robots } from "./routes";
+import { newComments, comments, item, news, stories, user, status, robots } from "./routes";
 
 const router = Router();
 
@@ -23,7 +23,8 @@ Object.entries({
 });
 
 // Other routes
-router.get("/newcomments", withCache, comments);
+router.get("/comments", withCache, comments);
+router.get("/newcomments", withCache, newComments);
 router.get("/item/:id", withCache, item);
 router.get("/user/:id", withCache, user);
 
